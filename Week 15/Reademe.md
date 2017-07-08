@@ -1,4 +1,4 @@
-﻿﻿# Week 15
+﻿# Week 15
 
 ## 位元運算
 [C reference 對於算數運算子的說明](http://en.cppreference.com/w/c/language/operator_arithmetic)  
