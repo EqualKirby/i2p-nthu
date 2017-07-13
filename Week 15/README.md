@@ -143,33 +143,12 @@ int main(void)
 
 以下是實務中可能會用到的例子，藉由一個夠大的型別來儲存多種屬性  
 
-```
-Student 0: NTHU CS Freshman 
-Student 1: NTHU Freshman 
-Student 2: NHCUE Freshman 
-Student 3: CS 
-
-After one year
-
-Student 0: NTHU CS 
-Student 1: NTHU 
-Student 2: NHCUE 
-Student 3: CS 
-
-After merging
-
-Student 0: NTHU CS 
-Student 1: NTHU 
-Student 2: NTHU 
-Student 3: CS 
-```
-
 ```C
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BIT(n) (1<<(n))
+#define BIT(n) (1u<<(n))
 
 #define NTHU_STUDENT BIT(0)
 #define NHCUE_STUDENT BIT(1)
@@ -249,22 +228,22 @@ unsigned getBits(unsigned x, int p, int n)
 十進位 100 用二進位表示為，粗體是要取出的 bits  
 0000 0000 0000 0000 0000 0000 01**10** **01**00  
 
-這個結果會用來當作mask  
 ```C
+// 這個結果會用來當作mask
 ~( ~0 << n )
 ```
 *   `~0` : 1111 1111 1111 1111 1111 1111 1111 1111  
 *   `<< n` : 1111 1111 1111 1111 1111 1111 1111 0000  
 *   `~`: 0000 0000 0000 0000 0000 0000 0000 1111  
 
-先把右邊不要的部分透過位移運算移除  
 ```C
+// 先把右邊不要的部分透過位移運算移除
 x >> (p-n)
 ```
 *   `>> (p-n)` : 0000 0000 0000 0000 0000 0000 0001 **1001**  
 
-最後將兩個結果進行 bitwise AND 運算  
 ```C
+// 最後將兩個結果進行 bitwise AND 運算
 ( x >> (p-n) ) & ~( ~0 << n )
 ```
 *   0000 0000 0000 0000 0000 0000 0000 1111 &  
@@ -279,13 +258,13 @@ unsigned invert( unsigned x, int p, int n )
 }
 ```
 
+利用 XOR 的運算性質：
+*   a ^ 0 = a  
+*   a ^ 1 = ~a  
+
 想辦法產生一個 mask，能從 p 位置後接 n 個 1，其餘位置都是零  
 這樣的 mask 可以用`~(~0 << n) << (p-n)`產生  
 接著將 mask 和 x 做 bitwise XOR 就可得到`invert`要求的效果  
-
-後面利用 XOR 的運算性質：
-*   a ^ 0 = a  
-*   a ^ 1 = ~a  
 
 下例的程式碼是用來傳回 x 向右 rotate n bits 之後的結果  
 
@@ -296,8 +275,8 @@ unsigned rightRotate(unsigned x, int n)
 }
 ```
 
-首先用`(x & ~(~0 << n))`取出最右邊`n`個 bits，然後向左位移`(sizeof(x)*8 - n)`bits  
-接著`(x >> n)`把 x 向右位移`n` bits，把兩個結果利用 OR 運算就可以做出向右 rotate 的效果  
+首先用`(x & ~(~0 << n))`取出最右邊 n 個 bits，然後向左位移`(sizeof(x)*8 - n)`bits  
+接著`(x >> n)`把 x 向右位移 n  bits，把兩個結果利用 OR 運算就可以做出向右 rotate 的效果  
 
 > Note:  
 > 以上範例均是假設`int`為 32 位元  
@@ -305,7 +284,7 @@ unsigned rightRotate(unsigned x, int n)
 ## C Structures
 [The GNU C Programming Tutorial 對於 structures 的解釋](https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html#Structures)  
 
-Structures 是可以由使用者自己定義，由其他型別(甚至是 structure)的變數所組成的一個資料型別  
+Structures 是可以由使用者自己定義，由其他型別 (甚至是 structure) 的變數所組成的一個資料型別  
 這樣的方式在使用上較方便，也會讓程式更簡潔易懂  
 
 譬如要描述平面上的點座標，可以用  
@@ -314,7 +293,7 @@ Structures 是可以由使用者自己定義，由其他型別(甚至是 structu
 int x, y;
 ```
 
-若使用 structures 則可以自定一個叫做 t_point 的資料型態  
+若使用 structures 則可以自定一個叫做`t_point`的資料型態  
 
 ```C
 struct t_point {
@@ -370,23 +349,15 @@ pp->x = 10;
 ```
 
 又，已經宣告過的 structure 可以再拿來當成另一個 structure 的 member  
+然後用它來產生變數，以及存取 members  
 
 ```C
 typedef struct {
    Point pt1;
    Point pt2;
 } Rect;
-```
 
-然後用它來產生變數  
-
-```C
 Rect screen;
-```
-
-以及存取 members  
-
-```C
 printf("%d %d\n", screen.pt1.x, screen.pt1.y);
 ```
 
@@ -474,7 +445,7 @@ void ones_vec_2(int length, Point **bp)
 ```
 
 Structures 可以使用的 operator 只有`=`、`&`、`.`、`->`，其他的運算則必須自己寫 functions 來達到我們想要的功能  
-例如，想要比較兩個 structure 變數相不相等，不能直接用 == 或 !=，相加`+`和相減`–`也不能用  
+例如，想要比較兩個 structure 變數相不相等，不能直接用`==`或`!=`，相加`+`和相減`–`也不能用  
 
 以下是幾個自訂 functions 的例子  
 
@@ -830,3 +801,58 @@ struct t_node* delete(struct t_node *np, int val)
 ```
 
 ![( linked list 的示意圖)](Image/ls4.png)
+
+---
+
+# 練習題
+
+## C Structures-01
+
+寫一個 function 名為`ptInRect`來判斷某個點 p 是否落在某個長方形 r 裡面，是則回傳 1，否則回傳 0  
+
+```C
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+typedef struct {
+   Point pt1;
+   Point pt2;
+} Rect;
+
+int ptInRect(Point p, Rect r); 
+```
+
+## C Structures-02
+
+寫一個 function 名為`randPoint`來隨機在某個長方形 r 的內部內產生 n 個點  
+並且將產生的點儲存在`p[]`裡面  
+
+```C
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+typedef struct {
+   Point pt1;
+   Point pt2;
+} Rect;
+
+void randPoint(Rect r, Point p[], int n);
+```
+
+然後再寫一個 funciton 名為`meanPoint`，將`p[]`裡頭的所有點加起來以後除以 n，並把計算結果傳回  
+
+```C
+Point meanPoint(Point p[], int n);
+```
+
+## Linked List-01
+
+[NTHU Online Judge: 10981 - Delete linked list](http://acm.cs.nthu.edu.tw/problem/10981/)
+
+## Linked List-02
+
+[NTHU Online Judge: 9412 - Doubly Linked List](http://acm.cs.nthu.edu.tw/problem/9412/)
