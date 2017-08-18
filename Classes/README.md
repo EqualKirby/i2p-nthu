@@ -243,7 +243,6 @@ class_name( parameter_list );
 class Rational
 {
 public:
-
     Rational(const int n, const int d)
     {
         SetNumerator(n);
@@ -482,7 +481,6 @@ FooB d(0);
 class Rational
 {
 public:
-
     Rational()
     {
         SetNumerator(0);
@@ -533,14 +531,386 @@ Rational b(174);
 Rational c;
 ```
 
-## Delegating Constructor, Converting constructor
+## Delegating Constructor, Converting Constructor
 
+現在我們有三個 constructor 可以進行 function overloading，但其內容大同小異，有沒有辦法試著將程式碼精簡一點呢？  
 
+在此要介紹一種語法，是 delegating constructor  
+也就是在 member initializer list 中，只有唯一一項，且該項是呼叫某個 constructor 並傳遞其能接受的引數  
 
+```C++
+#include<cassert>
 
+class Rational
+{
+public:
+    Rational(): Rational(0, 1) {}
 
+    Rational(const int n): Rational(n, 1) {}
+    
+    Rational(const int n, const int d)
+    {
+        SetNumerator(n);
+        SetDenominator(d);
+    }
 
+    int GetNumerator()
+    {
+        return mNumerator;
+    }
+    
+    int GetDenominator()
+    {
+        return mDenominator;
+    }
+    
+    void SetNumerator(const int num)
+    {
+        mNumerator = num;
+    }
+    
+    void SetDenominator(const int den)
+    {
+        // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(den != 0);
+        mDenominator = den;
+    }
 
+private:
+    int mNumerator;
+    int mDenominator;
+};
+
+Rational a(8, 7);
+Rational b(174);
+Rational c;
+```
+
+這樣的好處在於萬一要改動 constructor 裡面的邏輯，只需要更改一次就好  
+而如果某個 constructor 有使用到 delegating constructor  
+則該 constructor 本身的內容會等委派的 constructor 執行完畢以後才會執行  
+
+不過筆者在這裡偏向於利用 default argument 來解決  
+
+```C++
+#include<cassert>
+
+class Rational
+{
+public:
+    Rational(const int n = 0, const int d = 1)
+    {
+        SetNumerator(n);
+        SetDenominator(d);
+    }
+
+    int GetNumerator()
+    {
+        return mNumerator;
+    }
+    
+    int GetDenominator()
+    {
+        return mDenominator;
+    }
+    
+    void SetNumerator(const int num)
+    {
+        mNumerator = num;
+    }
+    
+    void SetDenominator(const int den)
+    {
+        // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(den != 0);
+        mDenominator = den;
+    }
+
+private:
+    int mNumerator;
+    int mDenominator;
+};
+
+Rational a(8, 7);
+Rational b(174);
+Rational c;
+```
+
+而接下來要介紹的是 converting constructor  
+只要是 constructor 前面沒有加上`explicit`關鍵字，都是 converting constructor  
+最主要的差別是在 initialization 的時候，可以成為「自訂型別轉換」中的一環  
+以及會不會被納入 function overloading 中進行決議  
+
+```C++
+/* class Rational defined as above */
+Rational a = 100;
+```
+
+看上去似乎很難接受，但其實這邊做的事情是  
+
+1.  這是個 copy initialization，`100`的型別為`int`，並不是`Rational`或是其 Derived Class  
+
+2.  尋找`Rational`裡面的 converting constructor，發現可以透過`Rational(const int n = 0, const int d = 1)`  
+    將`100`轉換成`Rational(100)`  
+
+3.  透過 copy constructor 將`Rational(100)`這個暫時值複製給`a`  
+
+> Note:  
+> 然而在有些狀況，其實是不會有 copy constructor 的介入  
+> 可能是透過編譯器，或是依照標準進行最佳化  
+
+至於如果是利用`{}`來進行 initialization，那麼事情就會變得更加複雜了  
+在這裡簡單舉例 converting constructor 適用於 copy list initialization 的情況  
+
+```C++
+/* class Rational defined as above */
+
+Rational Test(const Rational& a, const Rational& b)
+{
+	return{ 100 };
+}
+
+int main()
+{
+	Test({}, { 5, 2 });
+
+	return 0;
+}
+```
+
+如果我們不希望這種轉換發生，我們只需要在 constructor 前面加上`explicit`就可以了  
+但依照狀況的不同，有時可能在 function overloading 中也會把 explicit constructor 納入考量  
+假使最後某個 explicit constructor 是最佳結果，將會產生編譯錯誤  
+
+不過在此我們並不打算使用`explicit`，反而要保留這個特性  
+之後實作 operator overloading 時，這個特性反而可以幫助我們  
+
+關於這部分的規則，涉及到各種不同 initialization 的方法，並不是非得要知道的資訊  
+在此用一個例子作為參考  
+
+```C++
+class Foo
+{
+public:
+	explicit Foo(int)
+	{
+	}
+
+	Foo(float)
+	{
+	}
+};
+
+int main()
+{
+	Foo a = 5; // OK
+	// Foo b = { 5 }; // Failed
+
+	return 0;
+}
+```
+
+## Static Member, Const Member Function, This Pointer
+
+暫且先放下`Rational`，接著要介紹的是 static members  
+C++ 的`static`有兩種用途，一種是如同 C 一樣，指定 storage duration 與 linkage  
+另一種用途則是在`class`或是`struct`中，可以指定該 member 獨立於 class instance 之外  
+
+這樣說或許有點抽象，我們就先看一下到底 non-static member functions 是怎麼運作的  
+
+```C++
+#include<iostream>
+
+class Foo
+{
+public:
+    Foo(int n)
+        :mNum(n)
+    {
+    }
+
+    void Print()
+    {
+        std::cout << mNum << std::endl;
+    }
+
+private:
+    int mNum;
+};
+
+int main()
+{
+    Foo a(100);
+    a.Print();
+    
+    Foo b(99)
+    b.Print();
+
+    return 0;
+}
+```
+
+為甚麼`Print`可以印出不同資料呢？在`Print`的內部，只有說將`mNum`輸出而已？  
+可以試著將 non-static member functions 的運作想像成如下這樣  
+
+```C++
+/* 裡所當然會有編譯錯誤，因為這只是示意 */
+#include<iostream>
+
+class Foo
+{
+public:
+    Foo(int n)
+        :mNum(n)
+    {
+    }
+
+    void Print(Foo* this)
+    {
+        std::cout << this->mNum << std::endl;
+    }
+
+private:
+    int mNum;
+};
+
+int main()
+{
+    Foo a(100);
+    Foo::Print(&a);
+    
+    Foo b(99)
+    Foo::Print(&b);
+
+    return 0;
+}
+```
+
+可以想像成其實`Foo::Print`是一個屬於`Foo`這個 class scope 的 function，接收一個參數型別是`Foo*`  
+而當使用到 member 的時候，都會透過`this`去指向我們所需要的東西  
+
+實際上在 C++ 的`class`與`struct`的 non-static member functions 與 member initializer list 之中  
+`this`是語言提供來表達指向這個 instance 的 pointer 的關鍵字  
+
+> Note:  
+> `this`是個 prvalue，正如同沒辦法對一個變數連續使用`&`兩次  
+> `&this`當然也就是不合法的  
+
+於是我們重新回到 static members，首先先提 static data members  
+static data members 的 storage duration 也是程式開始到程式結束  
+並且只會有一個 instance 在程式中  
+
+宣告方式是在`class`裡面如同一般宣告 non-static data members 一樣，並且在前面加上`static`  
+但是接下來，還要在`class`外面定義該 static data member，並且可以初始化  
+
+```C++
+#include<iostream>
+
+class Foo
+{
+public:
+    void IncreaseCount()
+    {
+        count++;
+    }
+    
+    void DecreaseCount()
+    {
+        count--;
+    }
+
+    static int count;
+};
+
+int Foo::count = 0; // no 'static' keyword
+
+int main()
+{
+    std::cout << Foo::count << std::endl;
+
+    Foo a;
+    a.IncreaseCount();
+    std::cout << a.count << std::endl;
+    
+    Foo b;
+    b.IncreaseCount();
+    std::cout << b.count << std::endl;
+    
+    a.DecreaseCount();
+    b.DecreaseCount();
+    std::cout << Foo::count << std::endl;
+
+    return 0;
+}
+```
+
+從上面的例子可以看出來，除了可以用像是 non-static data members 一樣的`.`、`->`方法存取以外  
+還可以用`class_name::`去存取  
+
+並且在 non-static member functions 中也可以存取 static data members  
+如果改成`this->count++`也是可以的  
+
+> Note:  
+> statc data members 並不總是需要特地在外面定義的  
+> 但大部分的狀況是需要的  
+
+接下來關於 static member functions 的部分，語法其實和 non-static member functions 十分類似  
+存取的方式也和 static data members 如出一轍  
+
+```C++
+#include<iostream>
+
+class Foo
+{
+public:
+    void IncreaseCount()
+    {
+        mCount++;
+    }
+    
+    void DecreaseCount()
+    {
+        mCount--;
+    }
+
+    static void PrintCount()
+    {
+        std::cout << mCount << std::endl;
+    }
+
+private:
+    static int mCount;
+};
+
+int Foo::mCount = 0; // no 'static' keyword
+
+int main()
+{
+    Foo::PrintCount();
+
+    Foo a;
+    a.IncreaseCount();
+    a.PrintCount();
+    
+    Foo b;
+    b.IncreaseCount();
+    b.PrintCount();
+    
+    a.DecreaseCount();
+    b.DecreaseCount();
+    Foo::PrintCount();
+
+    return 0;
+}
+```
+
+但要特別注意一點，在 static member functions 中是沒有`this` pointer 的！  
+這代表著，我們不能在 static member functions 中存取 non-static data members  
+因為 static members 就代表與`class`的 instance 沒有關係  
+既然如此，就不會跟 non-static member functions 一樣可以想像成呼叫時傳入一個 pointer  
+
+以上面的例子來說，可以把`a.PrintCount()`的`a.`想成是提供編譯器可以推出是`Foo::`的線索  
+而不是可以做為`this`所指向的 address 的線索  
 
 
 
