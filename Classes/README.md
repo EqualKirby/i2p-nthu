@@ -102,22 +102,22 @@ private:
 class Rational
 {
 public:
-    int GetNumerator()
+    int Numerator()
     {
         return mNumerator;
     }
     
-    int GetDenominator()
+    int Denominator()
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         mDenominator = den;
     }
@@ -128,14 +128,17 @@ private:
 };
 
 Rational a;
-a.SetNumerator(1);
-a.SetDenominator(1);
+a.Numerator(1);
+a.Denominator(1);
 ```
 
 在`class`或是`struct`中可以宣告或定義 member functions  
 我們在上面的例子裡宣告並定義了四個 member functions，並且將其設定為`public`  
 代表不只 class 本身，外界也可以使用這四個我們所提供的 interface  
 而使用這些 member functions 的方式如同 data members 一樣，可以透過`.`或是`->`  
+
+另外可以注意到，member functions 也是同樣適用於 function overloading 的  
+所以如果是`a.Numerator();`就會拿到`mNumerator`的值；或像上例那樣呼叫，便可設定`mNumerator`的值  
 
 又，在 C++ 中，如果在 class 的定義裡面順便定義了 member functions，那麼他會被隱式地設定為 inline functions  
 如果不需要 member functions 被隱式地加上`inline`，那麼建議應該將其宣告與定義分開  
@@ -149,10 +152,10 @@ a.SetDenominator(1);
 class Rational
 {
 public:
-    int GetNumerator();
-    int GetDenominator();
-    void SetNumerator(const int num);
-    void SetDenominator(const int den);
+    int Numerator();
+    int Denominator();
+    void Numerator(const int num);
+    void Denominator(const int den);
 
 private:
     int mNumerator;
@@ -166,22 +169,22 @@ private:
 /* Rational.cpp */
 #include"Rational.h"
 
-int Rational::GetNumerator()
+int Rational::Numerator()
 {
     return mNumerator;
 }
     
-int Rational::GetDenominator()
+int Rational::Denominator()
 {
     return mDenominator;
 }
 
-void Rational::SetNumerator(const int num)
+void Rational::Numerator(const int num)
 {
     mNumerator = num;
 }
     
-void Rational::SetDenominator(const int den)
+void Rational::Denominator(const int den)
 {
     mDenominator = den;
 }
@@ -210,7 +213,7 @@ a.mDenominator = 0;
 就可以在外部要改動分母時，先確認是不是`0`以後才設定`mDenominator`  
 
 ```C++
-void Rational::SetDenominator(const int den)
+void Rational::Denominator(const int den)
 {
     if(den == 0)
     {
@@ -245,32 +248,35 @@ class Rational
 public:
     Rational(const int n, const int d)
     {
-        SetNumerator(n);
-        SetDenominator(d);
+        // 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(d != 0);
+        
+        mNumerator = n;
+        mDenominator = d;
     }
     
     Rational(const int n)
     {
-        SetNumerator(n);
-        SetDenominator(1);
+        mNumerator = n;
+        mDenominator = 1;
     }
 
-    int GetNumerator()
+    int Numerator()
     {
         return mNumerator;
     }
     
-    int GetDenominator()
+    int Denominator()
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
         assert(den != 0);
@@ -295,8 +301,8 @@ Rational b(174);
 ```C++
 Rational(const int n)
 {
-    SetNumerator(n);
-    SetDenominator(1);
+    mNumerator = n;
+    mDenominator = 1;
 }
 ```
 
@@ -310,7 +316,8 @@ Rational(const int n)
 ```
 
 用 member initializer list 的好處是他相當於 direct initialization  
-在此先讓我們先用別的例子，等等再回頭來說為甚麼這個例子我們不使用這個語法  
+以`Rational`來說，兩者的效果其實一樣，並沒有什麼差別  
+所以，在此讓我們看看有甚麼別的例子是會讓兩種效果有差異的  
 
 ```C++
 #include<string>
@@ -348,6 +355,10 @@ FooB b(std::string("B"));
 
 但是`b`裡面的`mStr`會直接使用 copy constructor 將`str`的內容複製到`mStr`  
 比起`a`來說，少了`mStr`先初始化自己的過程  
+
+> Note:  
+> 在`Rational`中，因為`mNumerator`與`mDenominator`的型別是`int`，如果不在 member initializer list 初始化  
+> 而是在 constructor 的裡面才賦值時，其實這兩個 data members 並不會先被初始化，所以不用擔心有可能會被賦值兩次  
 
 另外像是`const`變數或是沒有 default constructor 之類的物件，只能透過 member initializer list 初始化  
 如下面的`FooD`就是錯誤的語法  
@@ -422,14 +433,6 @@ int main()
 }
 ```
 
-看完了 member initializer list，或許讀者會疑問為甚麼`Rational`不選擇用此方式初始化？  
-在這裡，筆者認為因為`SetDenominator`裡面已經有不只單純賦值的動作  
-為了避免「檢查分母不為`0`」的部分重複在多個地方，於是在這裡選擇呼叫 member functions  
-
-> Note:  
-> 因為`mNumerator`與`mDenominator`的型別是`int`，所以在不寫 member initializer list 時  
-> 並不會先被清為`0`，所以不用擔心總共被賦值兩次  
-
 再次回到本節一開始的程式碼  
 可以看到有行被註解的程式碼，`// Rational c;`，如果不使這句成為註解，那麼將會產生編譯錯誤  
 原因出自於`Rational`沒有任何 constructor 是可以不填寫任何引數就可以被呼叫的  
@@ -482,39 +485,38 @@ class Rational
 {
 public:
     Rational()
+        :mNumerator(0), mDenominator(1)
     {
-        SetNumerator(0);
-        SetDenominator(1);
     }
 
     Rational(const int n, const int d)
+        :mNumerator(n), mDenominator(d)
     {
-        SetNumerator(n);
-        SetDenominator(d);
+        // 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(d != 0);
     }
     
     Rational(const int n)
+        :mNumerator(n), mDenominator(1)
     {
-        SetNumerator(n);
-        SetDenominator(1);
     }
 
-    int GetNumerator()
+    int Numerator()
     {
         return mNumerator;
     }
     
-    int GetDenominator()
+    int Denominator()
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
         assert(den != 0);
@@ -533,7 +535,8 @@ Rational c;
 
 ## Delegating Constructor, Converting Constructor
 
-現在我們有三個 constructor 可以進行 function overloading，但其內容大同小異，有沒有辦法試著將程式碼精簡一點呢？  
+如果有很多個 constructor 可以進行 function overloading  
+但其內容有部分是相同的，有沒有辦法試著將程式碼精簡一點呢？  
 
 在此要介紹一種語法，是 delegating constructor  
 也就是在 member initializer list 中，只有唯一一項，且該項是呼叫某個 constructor 並傳遞其能接受的引數  
@@ -549,27 +552,28 @@ public:
     Rational(const int n): Rational(n, 1) {}
     
     Rational(const int n, const int d)
+         :mNumerator(n), mDenominator(d)
     {
-        SetNumerator(n);
-        SetDenominator(d);
+        // 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(d != 0);
     }
 
-    int GetNumerator()
+    int Numerator()
     {
         return mNumerator;
     }
     
-    int GetDenominator()
+    int Denominator()
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
         assert(den != 0);
@@ -591,6 +595,7 @@ Rational c;
 則該 constructor 本身的內容會等委派的 constructor 執行完畢以後才會執行  
 
 不過筆者在這裡偏向於利用 default argument 來解決  
+畢竟每個 constructor 本身的內容都相同，僅是要填入的引數不同  
 
 ```C++
 #include<cassert>
@@ -599,27 +604,28 @@ class Rational
 {
 public:
     Rational(const int n = 0, const int d = 1)
+        :mNumerator(n), mDenominator(d)
     {
-        SetNumerator(n);
-        SetDenominator(d);
+        // 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(d != 0);
     }
 
-    int GetNumerator()
+    int Numerator()
     {
         return mNumerator;
     }
     
-    int GetDenominator()
+    int Denominator()
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
         assert(den != 0);
@@ -1057,27 +1063,28 @@ class Rational
 {
 public:
     Rational(const int n = 0, const int d = 1)
+        :mNumerator(n), mDenominator(d)
     {
-        SetNumerator(n);
-        SetDenominator(d);
+        // 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(d != 0);
     }
 
-    int GetNumerator() const
+    int Numerator() const
     {
         return mNumerator;
     }
     
-    int GetDenominator() const
+    int Denominator() const
     {
         return mDenominator;
     }
     
-    void SetNumerator(const int num)
+    void Numerator(const int num)
     {
         mNumerator = num;
     }
     
-    void SetDenominator(const int den)
+    void Denominator(const int den)
     {
         // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
         assert(den != 0);
@@ -1092,8 +1099,29 @@ private:
 
 > Note:  
 > 沒有 const constructor、const destructor  
+> 並且特別注意，如果把`const`寫在最前面，其修飾的是 return type  
 
 ## Operator Overloading
+
+operator overloading 可以說是 C++ 為了使用者自訂型別所引入的功能  
+原本使用 C 的時候，我們沒辦法直接對自訂型別使用`+`、`-`、`*`、`/`等 operator  
+變成得寫一個 function 並取個`plus`或是`concat`之類的名字來表達這種運算，看上去似乎就沒那麼直觀  
+
+而我們從一開始設計到現在`Rational`，正巧就是需要這些運算的  
+因此我們可以利用語言提供的特性，幫助我們讓`Rational`使用起來就像是`int`一樣  
+
+以下，首先我們先定義`+`、`-`、`*`、`/`的運算  
+而實作的部分就不會多加琢磨了，因為讀者應該要具備這樣的程度  
+
+```C++
+class Rational
+{
+public:
+
+};
+
+
+```
 
 
 
