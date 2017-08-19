@@ -665,7 +665,7 @@ Rational a = 100;
 ```C++
 /* class Rational defined as above */
 
-Rational Test(const Rational& a, const Rational& b)
+Rational Test(Rational a, Rational b)
 {
 	return{ 100 };
 }
@@ -911,6 +911,192 @@ int main()
 
 以上面的例子來說，可以把`a.PrintCount()`的`a.`想成是提供編譯器可以推出是`Foo::`的線索  
 而不是可以做為`this`所指向的 address 的線索  
+
+最後，本節要介紹的就是 const member functions  
+`const`代表常數，試圖直接更改 const object 將會引起編譯錯誤，間接更改也可能引起 undefined behavior  
+而一個屬於`class`的 const object 是不能更動到 data members，也不能呼叫 non-const member functions  
+
+```C++
+struct Foo
+{
+    void Modify()
+    {
+        num = 100;
+    }
+    
+    void Nothing()
+    {
+    }
+    
+    int num;
+};
+
+int main()
+{
+    const Foo a;
+    // a.Modify();
+    // a.num = 0;
+    // a.Nothing();
+
+    return 0;
+}
+```
+
+但以上面的例子來說，`Foo::Nothing`什麼事情也沒做，可是對於`a.Nothing()`來說，還是會引起編譯錯誤  
+為了解決這種狀況，只要在 non-static member functions 的宣告與定義中的尾巴加上`const`  
+就代表這個 function 可以在該 instance 也為`const`所修飾時被呼叫  
+
+```C++
+struct Foo
+{
+    void Modify() /* const */
+    {
+        num = 100;
+    }
+    
+    void Nothing() const
+    {
+    }
+    
+    int num;
+};
+
+int main()
+{
+    const Foo a;
+    // a.Modify();
+    // a.num = 0;
+    a.Nothing();
+
+    return 0;
+}
+```
+
+其中`Foo::Modify`如果把註解中的`const`保留，也會引發編譯錯誤  
+對於 const member functions 來說，`this`的型別是`const class_type*`  
+那麼從這個 pointer 來說，也就無法更改 data members  
+如果真的想要讓 data members 在該 instance 也為`const`所修飾時被改動，只要在前面加上`mutable`即可  
+
+```C++
+struct Foo
+{
+    void Modify() const
+    {
+        num = 100;
+    }
+    
+    void Nothing() const
+    {
+    }
+    
+    mutable int num;
+};
+
+int main()
+{
+    const Foo a;
+    a.Modify();
+    a.num = 0;
+    a.Nothing();
+
+    return 0;
+}
+```
+
+在回到`Rational`之前，再提一下 const and non-const member functions 的 function overloading  
+前面有提過，可以把 member functions 想像成額外多一個參數，型別是`class_type*`  
+其實更精確一點的說法是，其型別是`cv_qualifier class_type*`  
+以`Foo::Nothing`來說，就是期待收到型別為`const Foo*`  
+
+所以如果以`const Foo a`來說，呼叫`Foo::Nothing`是可以透過預設的轉型  
+使得`Foo*`轉為`const Foo*`並傳給`Foo::Nothing`，所以可以成功呼叫  
+請參考底下這個例子，並試著思考一下其結果  
+
+```C++
+#include<iostream>
+
+struct Foo
+{
+    void Print() const
+    {
+        std::cout<< "const version" << std::endl;
+    }
+    
+    void Print()
+    {
+        std::cout<< "non-const version" << std::endl;
+    }
+};
+
+void Test(const Foo& f)
+{
+    f.Print();
+}
+
+int main()
+{
+    const Foo a;
+    a.Print();
+    
+    Foo b;
+    b.Print();
+    
+    Test(a);
+    Test(b);
+
+    return 0;
+}
+```
+
+於是，回到`Rational`，我們就可以將某些 member functions 補上`const`  
+
+```C++
+#include<cassert>
+
+class Rational
+{
+public:
+    Rational(const int n = 0, const int d = 1)
+    {
+        SetNumerator(n);
+        SetDenominator(d);
+    }
+
+    int GetNumerator() const
+    {
+        return mNumerator;
+    }
+    
+    int GetDenominator() const
+    {
+        return mDenominator;
+    }
+    
+    void SetNumerator(const int num)
+    {
+        mNumerator = num;
+    }
+    
+    void SetDenominator(const int den)
+    {
+        // 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+        assert(den != 0);
+        mDenominator = den;
+    }
+
+private:
+    int mNumerator;
+    int mDenominator;
+};
+```
+
+> Note:  
+> 沒有 const constructor、const destructor  
+
+## Operator Overloading
+
+
+
 
 
 
