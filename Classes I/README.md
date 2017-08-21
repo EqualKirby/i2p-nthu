@@ -1,4 +1,14 @@
-﻿# Classes
+﻿# Classes I
+
+目錄  
+
+*   [前言](#前言)  
+*   [Data Members, Member Functions, Access Control](#data-members-member-functions-access-control)  
+*   [Constructor, Default Constructor, Member Initializer List](#constructor-default-constructor-member-initializer-list)  
+*   [Delegating Constructor, Converting Constructor](#delegating-constructor-converting-constructor)  
+*   [Static Member, Const Member Function, This Pointer](#static-member-const-member-function-this-pointer)  
+*   [Operator Overloading](#operator-overloading)  
+
 
 ## 前言
 
@@ -1114,24 +1124,666 @@ operator overloading 可以說是 C++ 為了使用者自訂型別所引入的功
 而實作的部分就不會多加琢磨了，因為讀者應該要具備這樣的程度  
 
 ```C++
+#include<cassert>
+#include<cmath>
+#include<iostream>
+#include<algorithm>
+
 class Rational
 {
 public:
+	Rational(const int n = 0, const int d = 1)
+		:mNumerator(n), mDenominator(d)
+	{
+		// 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(d != 0);
+		Simplify();
+	}
 
+	int Numerator() const
+	{
+		return mNumerator;
+	}
+
+	int Denominator() const
+	{
+		return mDenominator;
+	}
+
+	void Numerator(const int num)
+	{
+		mNumerator = num;
+		Simplify();
+	}
+
+	void Denominator(const int den)
+	{
+		// 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(den != 0);
+		mDenominator = den;
+		Simplify();
+	}
+
+private:
+
+	void Simplify()
+	{
+		auto factor = GCD(mNumerator, mDenominator);
+
+		mNumerator /= factor;
+		mDenominator /= factor;
+	}
+
+	static int GCD(int a, int b)
+	{
+		while (b != 0) 
+		{
+			a = a % b;
+			std::swap(a, b);
+		}
+
+		return std::abs(a);
+	}
+
+	int mNumerator;
+	int mDenominator;
 };
 
+const Rational operator+(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() + lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
 
+const Rational operator-(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() - lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator*(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator/(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator(), lhs.Denominator()*rhs.Numerator() };
+}
+
+std::ostream & operator<<(std::ostream& o, const Rational& n)
+{
+	if (std::abs(n.Denominator()) == 1)
+		o << n.Numerator()*n.Denominator();
+	else
+		o << n.Numerator() << " / " << n.Denominator();
+	
+	return o;
+}
+
+int main()
+{
+	Rational a{ 2,3 };
+	Rational b{ -4,6 };
+
+	std::cout << Rational(2, 6) << std::endl;
+	std::cout << Rational(-2, 6) << std::endl;
+	std::cout << Rational(2, -6) << std::endl;
+	std::cout << Rational(-2, -6) << std::endl;
+	std::cout << Rational(0, -100) << std::endl;
+	
+	std::cout << a + b << std::endl;
+	std::cout << a - b << std::endl;
+	std::cout << a * b << std::endl;
+	std::cout << a / b << std::endl;
+
+	std::cout << a + 1 << std::endl;
+	std::cout << a - 1 << std::endl;
+	std::cout << a * 1 << std::endl;
+	std::cout << a / 1 << std::endl;
+
+	std::cout << 2 + b << std::endl;
+	std::cout << 2 - b << std::endl;
+	std::cout << 2 * b << std::endl;
+	std::cout << 2 / b << std::endl;
+
+	return 0;
+}
 ```
 
+在這裡，筆者的想法是，使用者給定的分母與分子的正負號都會保留  
+譬如`1 / (-3)`就是保留成`1 / (-3)`，而非像是`(-1) / 3`這樣把正負號都利用分子表達  
+而針對分子為`0`的狀況，都將分母設為`1`或是`-1`  
 
+首先可以注意到，`Simplify`是一個 private member function  
+並且在 constructor、`Numerator()`、`Denominator()`中都有呼叫這個 function  
+這是因為只有在這些情況才會更動到內部的分子與分母，而化簡的行為是不需要暴露給使用者的  
+它是只在`Rational`內部需要時才會使用的 function，屬於 implementation 的一環  
 
+而`GCD`則是被定義成 private static member function  
+同樣，之所以是`private`是因為不需要暴露這個介面給使用者  
+而`static`的原因則是不需要有任何 members 的存取  
 
+這兩個合起來的行為，就是無論分子分母的正負號，都會回傳兩者的最大公因數，並取絕對值  
+在分子與分母除以最大公因數以後成為最簡分數之餘，仍然能保有原本的正負號  
 
+而 operator overloading 就如上面所示，我們把這些 functions 定義在`class`之外  
+還記得前面提過的，我們之所以不將`Rational`的 constructor 加上`explicit`  
+就是為了能在 operator overloading 時，直接地支援與整數的運算  
 
+以`2 + b`為例子，首先會先找到要呼叫的 function 是  
+`const Rational operator+(const Rational& lhs, const Rational& rhs)`  
+接著，會發現`lhs`參考的型態與`int`不符合，於是編譯器會嘗試尋找`Rational`的 converting constructor 中  
+哪個 function 的參數是可以只用一個`int`進行呼叫，於是`2`就變成`Rational(2)`  
+而`rhs`就可以參考到我們使用的`b`，於是兩者就可以進行運算  
 
+而，如果將上面關於`+`、`-`、`*`、`/`的 functions 定義在`class`之內，`a + 1`可以通過編譯，但是`2 + b`不行  
+因為像是`+`、`-`、`*`、`/`等需要兩個 operands 的 operator，以 member function 的方式撰寫  
+那麼對於`a operator b`來說，`a`就必須要是`Rational`，`2 + b`就無法正確地讓`2`進行型別轉換到`Rational`  
+所以為了這個功能，我們將這些 functions 定義在`class`之外，不讓它們成為 member functions  
 
+還有一個可以注意到的地方，就是那四個 functions 都回傳`const Rational`  
+這是為了避免使用者寫出`(a + b) = Rational(8,7)`這種語句，不過這不代表這種寫法是錯誤的  
 
+除了四則運算，我們還進行了`<<`的 operator overloading，而`std::ostream`就是`std::cout`的型別  
+其中，條件句會判斷分母的絕對值是否為`1`，是因為如果分母是`1`或是`-1`，那麼分子的值就可以直接顯示出來  
+並依照狀況決定要不要將分子加上負號，目的只是讓其顯示起來較為美觀而已  
 
+接著，我們可以來實作與比較相關的運算  
 
+```C++
+#include<cassert>
+#include<cmath>
+#include<vector>
+#include<iostream>
+#include<algorithm>
 
+class Rational
+{
+public:
+	Rational(const int n = 0, const int d = 1)
+		:mNumerator(n), mDenominator(d)
+	{
+		// 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(d != 0);
+		Simplify();
+	}
 
+	int Numerator() const
+	{
+		return mNumerator;
+	}
+
+	int Denominator() const
+	{
+		return mDenominator;
+	}
+
+	void Numerator(const int num)
+	{
+		mNumerator = num;
+		Simplify();
+	}
+
+	void Denominator(const int den)
+	{
+		// 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(den != 0);
+		mDenominator = den;
+		Simplify();
+	}
+
+private:
+
+	void Simplify()
+	{
+		auto factor = GCD(mNumerator, mDenominator);
+
+		mNumerator /= factor;
+		mDenominator /= factor;
+	}
+
+	static int GCD(int a, int b)
+	{
+		while (b != 0) 
+		{
+			a = a % b;
+			std::swap(a, b);
+		}
+
+		return std::abs(a);
+	}
+
+	int mNumerator;
+	int mDenominator;
+};
+
+const Rational operator+(const Rational& n)
+{
+	return n;
+}
+
+const Rational operator-(const Rational& n)
+{
+	return{ -n.Numerator(),n.Denominator() };
+}
+
+const Rational operator+(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() + lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator-(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() - lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator*(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator/(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator(), lhs.Denominator()*rhs.Numerator() };
+}
+
+std::ostream & operator<<(std::ostream& o, const Rational& n)
+{
+	if (std::abs(n.Denominator()) == 1)
+		o << n.Numerator()*n.Denominator();
+	else
+		o << n.Numerator() << " / " << n.Denominator();
+	
+	return o;
+}
+
+bool operator<(const Rational& lhs, const Rational& rhs)
+{
+	auto r = lhs - rhs;
+	auto n = r.Numerator();
+	auto d = r.Denominator();
+
+	if (d > 0 && n < 0)
+		return true;
+	else if (d < 0 && n > 0)
+		return true;
+	else
+		return false;
+}
+
+bool operator>(const Rational& lhs, const Rational& rhs)
+{
+	return rhs < lhs;
+}
+
+bool operator<=(const Rational& lhs, const Rational& rhs)
+{
+	return !(lhs > rhs);
+}
+
+bool operator>=(const Rational& lhs, const Rational& rhs)
+{
+	return !(rhs < lhs);
+}
+
+bool operator==(const Rational& lhs, const Rational& rhs)
+{
+	auto r = lhs - rhs;
+
+	if (r.Numerator() == 0)
+		return true;
+	else
+		return false;
+}
+
+bool operator!=(const Rational& lhs, const Rational& rhs)
+{
+	return !(rhs == lhs);
+}
+
+int main()
+{
+	Rational a{ 2,3 };
+	Rational b{ -4,6 };
+
+	std::cout << "--------------------------------" << std::endl;
+
+	std::cout << Rational(2, 6) << std::endl;
+	std::cout << Rational(-2, 6) << std::endl;
+	std::cout << Rational(2, -6) << std::endl;
+	std::cout << Rational(-2, -6) << std::endl;
+	std::cout << Rational(0, -100) << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+
+	std::cout << a + b << std::endl;
+	std::cout << a - b << std::endl;
+	std::cout << a * b << std::endl;
+	std::cout << a / b << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << a + 1 << std::endl;
+	std::cout << a - 1 << std::endl;
+	std::cout << a * 1 << std::endl;
+	std::cout << a / 1 << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << 2 + b << std::endl;
+	std::cout << 2 - b << std::endl;
+	std::cout << 2 * b << std::endl;
+	std::cout << 2 / b << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << (Rational(2, 6) < Rational(2, 6)) << std::endl;
+	std::cout << (Rational(3, 6) < Rational(2, 6)) << std::endl;
+	std::cout << (Rational(2, 6) < Rational(3, 6)) << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << (Rational(3, -6) < Rational(-2, 6)) << std::endl;
+	std::cout << (Rational(-2, 6) < Rational(3, -6)) << std::endl;
+	std::cout << (Rational(3, -6) < Rational(2, -6)) << std::endl;
+	std::cout << (Rational(-2, 6) < Rational(-3, 6)) << std::endl;
+	std::cout << (Rational(-3, 6) < Rational(-3, 6)) << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+
+	std::vector<Rational> r{ Rational(7, 8) ,  Rational(-3, 6) ,Rational(2, 6),Rational(0, -6) };
+	std::sort(r.begin(), r.end());
+	
+	for (auto& i : r)
+		std::cout << i << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+
+	return 0;
+}
+```
+
+可以看到我們時做了`<`、`>`、`<=`、`>=`、`==`、`!=`這六種比較  
+但實際上需要花比較多心力去寫的就是`<`和`==`而已  
+因為其他的 relational operators 可以透過邏輯的方式轉成這兩種形式  
+甚至連`==`其實都可以被轉為`!( a < b || b < a )`  
+
+關於`<`的部分，主要就是有分母為正與分母為負的可能  
+所以要分兩個條件去判斷到底相減的結果是不是負數  
+
+可以看到最底下，我們使用了 STL 裡面名為`vector`的 container  
+而`std::sort(r.begin(), r.end())`則是對這個 container 裡面的所有元素進行排序  
+因為我們提供了`bool operator<(const Rational& lhs, const Rational& rhs)`的定義  
+所以在`std::sort`的第三個 argument 預設為`std::less`的狀況下，就會使用我們提供的`<` operator  
+就好比是`qsort`要提供的 function pointer 一樣，只是因為 C++ 的 operator overloading  
+讓這些事情看上去更為直覺  
+
+此外，我們又定義了只有一個 operand 的`+`與`-`  
+就是為了處理像是`(+a) - (-b)`的狀況  
+
+最後，我們要處理的就是`+=`、`-=`、`*=`、`/=`  
+這些和`=`一樣也都被稱為 assignment operators  
+不過對於`class`來說，有種 special member functions 稱為 copy assignment operator  
+這個請容筆者暫且先不在此介紹，先把最後的四種運算符號解決  
+
+```C++
+#include<cassert>
+#include<cmath>
+#include<vector>
+#include<iostream>
+#include<algorithm>
+
+class Rational
+{
+public:
+	Rational(const int n = 0, const int d = 1)
+		:mNumerator(n), mDenominator(d)
+	{
+		// 如果 d 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(d != 0);
+		Simplify();
+	}
+
+	int Numerator() const
+	{
+		return mNumerator;
+	}
+
+	int Denominator() const
+	{
+		return mDenominator;
+	}
+
+	void Numerator(const int num)
+	{
+		mNumerator = num;
+		Simplify();
+	}
+
+	void Denominator(const int den)
+	{
+		// 如果 den 為 0，因為條件句為 false，會輸出錯誤訊息以後並結束程式
+		assert(den != 0);
+		mDenominator = den;
+		Simplify();
+	}
+
+private:
+
+	void Simplify()
+	{
+		auto factor = GCD(mNumerator, mDenominator);
+
+		mNumerator /= factor;
+		mDenominator /= factor;
+	}
+
+	static int GCD(int a, int b)
+	{
+		while (b != 0) 
+		{
+			a = a % b;
+			std::swap(a, b);
+		}
+
+		return std::abs(a);
+	}
+
+	int mNumerator;
+	int mDenominator;
+};
+
+const Rational operator+(const Rational& n)
+{
+	return n;
+}
+
+const Rational operator-(const Rational& n)
+{
+	return{ -n.Numerator(),n.Denominator() };
+}
+
+const Rational operator+(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() + lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator-(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator() - lhs.Denominator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator*(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Numerator(), lhs.Denominator()*rhs.Denominator() };
+}
+
+const Rational operator/(const Rational& lhs, const Rational& rhs)
+{
+	return{ lhs.Numerator()*rhs.Denominator(), lhs.Denominator()*rhs.Numerator() };
+}
+
+Rational& operator+=(Rational& lhs, const Rational& rhs)
+{
+	lhs = lhs + rhs;
+	return lhs;
+}
+
+Rational& operator-=(Rational& lhs, const Rational& rhs)
+{
+	lhs = lhs - rhs;
+	return lhs;
+}
+
+Rational& operator*=(Rational& lhs, const Rational& rhs)
+{
+	lhs = lhs * rhs;
+	return lhs;
+}
+
+Rational& operator/=(Rational& lhs, const Rational& rhs)
+{
+	lhs = lhs / rhs;
+	return lhs;
+}
+
+std::ostream & operator<<(std::ostream& o, const Rational& n)
+{
+	if (std::abs(n.Denominator()) == 1)
+		o << n.Numerator()*n.Denominator();
+	else
+		o << n.Numerator() << " / " << n.Denominator();
+	
+	return o;
+}
+
+bool operator<(const Rational& lhs, const Rational& rhs)
+{
+	auto r = lhs - rhs;
+	auto n = r.Numerator();
+	auto d = r.Denominator();
+
+	if (d > 0 && n < 0)
+		return true;
+	else if (d < 0 && n > 0)
+		return true;
+	else
+		return false;
+}
+
+bool operator>(const Rational& lhs, const Rational& rhs)
+{
+	return rhs < lhs;
+}
+
+bool operator<=(const Rational& lhs, const Rational& rhs)
+{
+	return !(lhs > rhs);
+}
+
+bool operator>=(const Rational& lhs, const Rational& rhs)
+{
+	return !(rhs < lhs);
+}
+
+bool operator==(const Rational& lhs, const Rational& rhs)
+{
+	auto r = lhs - rhs;
+
+	if (r.Numerator() == 0)
+		return true;
+	else
+		return false;
+}
+
+bool operator!=(const Rational& lhs, const Rational& rhs)
+{
+	return !(rhs == lhs);
+}
+
+int main()
+{
+	Rational a{ 2,3 };
+	Rational b{ -4,6 };
+
+	std::cout << "--------------------------------" << std::endl;
+
+	std::cout << Rational(2, 6) << std::endl;
+	std::cout << Rational(-2, 6) << std::endl;
+	std::cout << Rational(2, -6) << std::endl;
+	std::cout << Rational(-2, -6) << std::endl;
+	std::cout << Rational(0, -100) << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+
+	std::cout << a + b << std::endl;
+	std::cout << a - b << std::endl;
+	std::cout << a * b << std::endl;
+	std::cout << a / b << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << a + 1 << std::endl;
+	std::cout << a - 1 << std::endl;
+	std::cout << a * 1 << std::endl;
+	std::cout << a / 1 << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << 2 + b << std::endl;
+	std::cout << 2 - b << std::endl;
+	std::cout << 2 * b << std::endl;
+	std::cout << 2 / b << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << (Rational(2, 6) < Rational(2, 6)) << std::endl;
+	std::cout << (Rational(3, 6) < Rational(2, 6)) << std::endl;
+	std::cout << (Rational(2, 6) < Rational(3, 6)) << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+	
+	std::cout << (Rational(3, -6) < Rational(-2, 6)) << std::endl;
+	std::cout << (Rational(-2, 6) < Rational(3, -6)) << std::endl;
+	std::cout << (Rational(3, -6) < Rational(2, -6)) << std::endl;
+	std::cout << (Rational(-2, 6) < Rational(-3, 6)) << std::endl;
+	std::cout << (Rational(-3, 6) < Rational(-3, 6)) << std::endl;
+	
+	std::cout << "--------------------------------" << std::endl;
+
+	std::vector<Rational> r{ Rational(7, 8) ,  Rational(-3, 6) ,Rational(2, 6),Rational(0, -6) };
+	std::sort(r.begin(), r.end());
+	
+	for (auto& i : r)
+		std::cout << i << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+
+	Rational c;
+	Rational d = b;
+
+	c = a; c += d;
+	std::cout << c << std::endl;
+
+	c = a; c -= d;
+	std::cout << c << std::endl;
+
+	c = a; c *= d;
+	std::cout << c << std::endl;
+
+	c = a; c /= d;
+	std::cout << c << std::endl;
+
+	std::cout << "--------------------------------" << std::endl;
+
+	return 0;
+}
+```
+
+要注意的是，以`+=`來說，是長這樣  
+`Rational& operator+=(Rational& lhs, const Rational& rhs)`  
+之所以`lhs`是期待接收一個 non-const reference，是因為`lhs`是要被賦值的對象  
+如果是被`const`修飾就沒辦法對其進行賦值了，而回傳的型別是 non-const reference  
+也是因為要支援類似`a = b = c`的語法  
+
+到目前為止，我們算是實作完`Rational`了  
+希望透過這樣的介紹，能讓讀者們能夠理解 C++ 到底多了的東西能幫助我們甚麼  
