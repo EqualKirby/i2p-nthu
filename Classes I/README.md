@@ -239,10 +239,11 @@ void Rational::Denominator(const int den)
 
 ## Constructor, Default Constructor, Member Initializer List
 
-在`class`中，constructor 是一種 special member functions，他在物件需要被初始化時被呼叫  
+在`class`中，constructor 是一種在物件需要被初始化時，被呼叫的 non-static member function  
 而其功用就是初始化該物件的內容  
 
-而 constructor 的宣告如下  
+而 constructor 的宣告如下，類似於一般 non-static member functions 的宣告方式  
+但是沒有回傳的型別，其名稱也必須與該`class`同名  
 
 ```C++
 class_name( parameter_list );
@@ -450,13 +451,13 @@ int main()
 
 到這裡，或許讀者會疑問，在一開始還沒有寫上我們自己的 constructor 以前，為甚麼就沒問題？  
 因為一旦我們定義了自己的 constructor，編譯器就不會隱式地為我們產生一個 default constructor  
-類似的狀況也發生在有些 special member functions  
 
 如果我們沒有自己定義的 default constructor，又希望保留編譯器替我們產生的 default constructor  
 可以先寫出 default constructor 的宣告以後，在後面接上`= default`來達成此目的  
 若是想明確地禁止，則是使用`= delete`  
 
-之後若其他的 special member functions 也是有編譯器會隱式地產生的狀況，也可以用同樣方法保留或是禁止  
+像是 default constructor 這種在某些情況下，會由編譯器隱式地提供宣告或是定義  
+這種 functions 均被稱為 special member functions，也可以用同樣方法保留或是禁止  
 
 ```C++
 struct FooA
